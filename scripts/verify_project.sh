@@ -36,14 +36,38 @@ else
   echo "jq not installed; skipping JSON validation"
 fi
 
-# Example required data files (user may adjust)
-REQUIRED_DATA=("data/raw/trades.parquet" "data/processed/features.parquet")
+# Example required data files
+PROCESSED_DATA="data/processed/features.parquet"
+REQUIRED_DATA=("data/raw/trades.parquet" "$PROCESSED_DATA")
 for f in "${REQUIRED_DATA[@]}"; do
   if [[ ! -f "$f" ]]; then
     echo "Missing required data file: $f"
     exit 1
   fi
 done
+
+# ---- Data Integrity (NaN/Inf) ----
+if [[ -f "$PROCESSED_DATA" ]]; then
+  echo "Checking for NaN/Inf in $PROCESSED_DATA..."
+  python3 - <<'PY'
+import pandas as pd
+import numpy as np
+import sys
+try:
+    df = pd.read_parquet('data/processed/features.parquet')
+    if df.isnull().values.any():
+        print("ERROR: NaNs detected in features")
+        sys.exit(1)
+    if np.isinf(df.select_dtypes(include=np.number).values).any():
+        print("ERROR: Infs detected in features")
+        sys.exit(1)
+    print("Data integrity check passed (No NaNs/Infs)")
+except Exception as e:
+    print(f"Warning: Could not perform deep data check: {e}")
+PY
+else
+  echo "Skipping deep data check (processed file not found yet)"
+fi
 
 # ---- Environment checks ----
 if command -v python3 >/dev/null 2>&1; then
