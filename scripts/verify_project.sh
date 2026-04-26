@@ -4,23 +4,33 @@
 set -e
 
 # ---- Repo checks ----
-if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  echo "Not inside a git repository"
-  exit 1
+SKIP_GIT=false
+if [[ "$1" == "--skip-git" ]] || [[ "$COLAB_ENV" == "true" ]]; then
+  SKIP_GIT=true
 fi
 
-REMOTE=$(git config --get remote.origin.url || true)
-if [[ -z "$REMOTE" ]]; then
-  echo "No remote origin configured"
-  exit 1
-fi
+if [ "$SKIP_GIT" = false ]; then
+    if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+      echo "Not inside a git repository"
+      exit 1
+    fi
 
-# Ensure current commit is pushed
-LOCAL_HASH=$(git rev-parse HEAD)
-REMOTE_HASH=$(git ls-remote "$REMOTE" HEAD | cut -f1)
-if [[ "$LOCAL_HASH" != "$REMOTE_HASH" ]]; then
-  echo "Local commit not pushed to remote"
-  exit 1
+    REMOTE=$(git config --get remote.origin.url || true)
+    if [[ -z "$REMOTE" ]]; then
+      echo "No remote origin configured"
+      exit 1
+    fi
+
+    # Ensure current commit is pushed
+    LOCAL_HASH=$(git rev-parse HEAD)
+    REMOTE_HASH=$(git ls-remote "$REMOTE" HEAD | cut -f1)
+    if [[ "$LOCAL_HASH" != "$REMOTE_HASH" ]]; then
+      echo "Local commit not pushed to remote"
+      exit 1
+    fi
+else
+    echo "Skipping Git remote checks (Colab/Skip-Git mode)"
+    LOCAL_HASH="N/A"
 fi
 
 # ---- Data checks ----
