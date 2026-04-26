@@ -3,11 +3,11 @@
 # Automates the transfer of raw data from local to remote VM.
 set -e
 
-# Configuration (edit or set env vars)
-REMOTE_HOST=${REMOTE_HOST:-"TU_HOST"}
-REMOTE_USER=${REMOTE_USER:-"TU_USER"}
+# Configuration (Using example values provided by user)
+REMOTE_HOST=${REMOTE_HOST:-"34.67.120.15"}
+REMOTE_USER=${REMOTE_USER:-"ubuntu"}
 LOCAL_DATA_DIR="/Users/oscarr/Desarrollo/Python0/PPO:LSTM + Gymnasium/rl_eth_engine/data/raw/"
-REMOTE_DATA_DIR=${REMOTE_DATA_DIR:-"~/rl_eth_engine/data/raw/"}
+REMOTE_DATA_DIR=${REMOTE_DATA_DIR:-"/home/ubuntu/rl_eth_engine/data/raw/"}
 
 echo "Deploying data from $LOCAL_DATA_DIR to ${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_DATA_DIR}..."
 

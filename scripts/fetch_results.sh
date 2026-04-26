@@ -3,10 +3,10 @@
 # Copies results, checkpoints and logs from the remote VM to the local machine.
 set -e
 
-# Remote details (set via env vars)
-REMOTE_HOST=${REMOTE_HOST:-"TU_HOST"}
-REMOTE_USER=${REMOTE_USER:-"TU_USER"}
-REMOTE_PATH=${REMOTE_PATH:-"~/rl_eth_engine"}
+# Remote details (Using example values provided by user)
+REMOTE_HOST=${REMOTE_HOST:-"34.67.120.15"}
+REMOTE_USER=${REMOTE_USER:-"ubuntu"}
+REMOTE_PATH=${REMOTE_PATH:-"/home/ubuntu/rl_eth_engine"}
 LOCAL_RESULTS_DIR="$(pwd)/results"
 
 mkdir -p "$LOCAL_RESULTS_DIR"

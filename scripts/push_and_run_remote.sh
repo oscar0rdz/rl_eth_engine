@@ -18,10 +18,10 @@ git commit -m "[auto] push changes"
 git push origin main
 
 # ---- Remote execution ----
-# SSH details (FILL THESE IN or set as environment variables)
-REMOTE_HOST=${REMOTE_HOST:-"TU_HOST"}
-REMOTE_USER=${REMOTE_USER:-"TU_USER"}
-REMOTE_PATH=${REMOTE_PATH:-"~/rl_eth_engine"}
+# SSH details (Using example values provided by user)
+REMOTE_HOST=${REMOTE_HOST:-"34.67.120.15"}
+REMOTE_USER=${REMOTE_USER:-"ubuntu"}
+REMOTE_PATH=${REMOTE_PATH:-"/home/ubuntu/rl_eth_engine"}
 
 ssh ${REMOTE_USER}@${REMOTE_HOST} <<'EOF'
   cd ${REMOTE_PATH}
