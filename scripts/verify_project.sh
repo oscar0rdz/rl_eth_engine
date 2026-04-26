@@ -96,7 +96,6 @@ else
   exit 1
 fi
 
-# Check GPU availability (optional)
 if command -v nvidia-smi >/dev/null 2>&1; then
   nvidia-smi >/dev/null || { echo "GPU detected but nvidia-smi failed"; exit 1; }
 else
