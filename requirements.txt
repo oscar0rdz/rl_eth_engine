@@ -1,0 +1,20 @@
+# Core RL
+torch
+gymnasium
+stable-baselines3
+sb3-contrib
+
+# Data & Processing
+pandas
+numpy
+pyyaml
+pyarrow
+fastparquet
+
+# APIs
+python-binance
+
+# Utilities
+tqdm
+matplotlib
+tensorboard
