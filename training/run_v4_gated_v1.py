@@ -35,6 +35,45 @@ class V4LoggerCallback(BaseCallback):
         self.logger.record('env/trade_count', info['trade_count'])
         return True
 
+def update_status(gate, seed, window, step=0, total_steps=0, stage="training"):
+    os.makedirs("logs", exist_ok=True)
+    status = {
+        "gate": gate,
+        "seed": seed,
+        "window": window,
+        "step": step,
+        "total_steps": total_steps,
+        "stage": stage,
+        "last_update": pd.Timestamp.now().isoformat()
+    }
+    with open("logs/status.json", "w") as f:
+        json.dump(status, f, indent=4)
+    
+    # Heartbeat for quick terminal check
+    with open("logs/heartbeat.txt", "w") as f:
+        f.write(f"{pd.Timestamp.now().isoformat()} | G{gate} | S{seed} | W{window} | Step {step}/{total_steps}")
+
+class V4LoggerCallback(BaseCallback):
+    def __init__(self, gate, seed, window, total_steps, verbose=0):
+        super(V4LoggerCallback, self).__init__(verbose)
+        self.gate = gate
+        self.seed = seed
+        self.window = window
+        self.total_steps = total_steps
+
+    def _on_step(self) -> bool:
+        info = self.locals['infos'][0]
+        if info.get('last_trade_pnl', 0) != 0:
+            self.logger.record('trade/pnl', info['last_trade_pnl'])
+            self.logger.record('trade/regime', info['last_trade_regime'])
+        self.logger.record('env/equity', info['equity'])
+        self.logger.record('env/trade_count', info['trade_count'])
+        
+        # Rule 6: 4-Layer Monitoring - Update status every 1024 steps
+        if self.num_timesteps % 1024 == 0:
+            update_status(self.gate, self.seed, self.window, self.num_timesteps, self.total_steps)
+        return True
+
 def get_git_metadata():
     try:
         import subprocess
@@ -53,21 +92,35 @@ def get_config_hash(path):
         return "N/A"
 
 def run_v4_gated_pipeline(gate=1):
+    import torch
     print(f"--- INITIATING V4 GATE {gate} ---")
     
-    # Rule 2: Sync check (Assumes sync_project.sh was run or we are clean)
+    # Rule 4 & 10: GPU Enforcement for long runs
+    cuda_available = torch.cuda.is_available()
+    print(f"GPU Available: {cuda_available}")
+    if gate >= 2 and not cuda_available:
+        print("ERROR: Gate 2+ requires GPU runtime. Aborting.")
+        with open("logs/error.flag", "w") as f: f.write("GPU Missing for Industrial run")
+        return
+
+    # Rule 2: Sync check
     commit, status = get_git_metadata()
     if status != "":
-        print(f"ERROR: Repository is dirty. Please commit or reset. Status:\n{status}")
+        print(f"ERROR: Repository is dirty. Status:\n{status}")
+        with open("logs/error.flag", "w") as f: f.write("Dirty Repository")
         return
+
+    os.makedirs("logs", exist_ok=True)
+    os.makedirs("evaluation", exist_ok=True)
+    os.makedirs("models", exist_ok=True)
 
     symbol = 'ETHUSDT'
     collector = DataCollector()
     
-    # Gate configurations
+    # Gate configurations (Rule 9: Industrial criteria)
     gate_configs = {
-        1: {'seeds': [11, 23, 37], 'steps': 300000, 'windows': 1, 'thresholds': {'trades': 50, 'expectancy': -0.03}},
-        2: {'seeds': [11, 23, 37, 71, 97], 'steps': 1500000, 'windows': 2, 'thresholds': {'trades': 100, 'pf': 1.05, 'expectancy': 0.0}}
+        1: {'seeds': [11, 23, 37], 'steps': 300000, 'windows': 1, 'thresholds': {'trades': 50, 'expectancy': -0.03, 'flat_ratio': 0.90}},
+        2: {'seeds': [11, 23, 37, 71, 97], 'steps': 800000, 'windows': 2, 'thresholds': {'trades': 100, 'pf': 1.05, 'expectancy': 0.0}}
     }
     cfg = gate_configs[gate]
     
@@ -87,80 +140,98 @@ def run_v4_gated_pipeline(gate=1):
     ]
     
     results = []
-    
-    for seed in cfg['seeds']:
-        for win_idx in range(cfg['windows']):
-            win = windows[win_idx]
-            print(f"\n>> Gate {gate} | Seed {seed} | Window {win_idx+1}")
-            
-            model_path = f"models/v4_G{gate}_S{seed}_W{win_idx+1}"
-            stats_path = f"models/v4_stats_G{gate}_S{seed}_W{win_idx+1}.pkl"
-            
-            train_df = full_df.loc[win['train'][0]:win['train'][1]]
-            test_df = full_df.loc[win['test'][0]:win['test'][1]]
-            
-            if not os.path.exists(f"{model_path}.zip"):
-                env = ETHTradingEnvV4(train_df, training_phase=1)
-                env = Monitor(env)
-                venv = DummyVecEnv([lambda: env])
-                venv = VecNormalize(venv, norm_obs=True, norm_reward=True)
+    try:
+        for seed in cfg['seeds']:
+            for win_idx in range(cfg['windows']):
+                win = windows[win_idx]
+                win_id = win_idx + 1
+                update_status(gate, seed, win_id, stage="initializing")
                 
-                model = RecurrentPPO(
-                    "MlpLstmPolicy", venv, verbose=1, seed=seed,
-                    learning_rate=1e-4, n_steps=2048, batch_size=128,
-                    tensorboard_log="./tensorboard_logs/v4_industrial"
-                )
+                print(f"\n>> Gate {gate} | Seed {seed} | Window {win_id}")
                 
-                model.learn(total_timesteps=cfg['steps'], tb_log_name=f"V4_G{gate}_S{seed}_W{win_idx+1}", callback=V4LoggerCallback())
-                model.save(model_path)
-                venv.save(stats_path)
-            
-            # Rule 3: Comprehensive Audit Metadata
-            for stress in [1.0, 1.5]:
-                m = run_evaluation_report(model_path, stats_path, test_df, cost_multiplier=stress)
-                m.update({
-                    'commit_hash': commit,
-                    'dataset_version': dataset_version,
-                    'config_hash': config_hash,
-                    'seed': seed,
-                    'window_id': win_idx + 1,
-                    'gate': gate
-                })
-                results.append(m)
+                model_path = f"models/v4_G{gate}_S{seed}_W{win_id}"
+                stats_path = f"models/v4_stats_G{gate}_S{seed}_W{win_id}.pkl"
                 
-            # Incremental save
-            pd.DataFrame(results).to_csv("evaluation/industrial_results.csv", index=False)
+                train_df = full_df.loc[win['train'][0]:win['train'][1]]
+                test_df = full_df.loc[win['test'][0]:win['test'][1]]
+                
+                if not os.path.exists(f"{model_path}.zip"):
+                    env = ETHTradingEnvV4(train_df, training_phase=1)
+                    env = Monitor(env)
+                    venv = DummyVecEnv([lambda: env])
+                    venv = VecNormalize(venv, norm_obs=True, norm_reward=True)
+                    
+                    model = RecurrentPPO(
+                        "MlpLstmPolicy", venv, verbose=1, seed=seed,
+                        learning_rate=1e-4, n_steps=2048, batch_size=128,
+                        tensorboard_log="./tensorboard_logs/v4_industrial"
+                    )
+                    
+                    model.learn(
+                        total_timesteps=cfg['steps'], 
+                        tb_log_name=f"V4_G{gate}_S{seed}_W{win_id}", 
+                        callback=V4LoggerCallback(gate, seed, win_id, cfg['steps'])
+                    )
+                    model.save(model_path)
+                    venv.save(stats_path)
+                
+                # Rule 3: Comprehensive Audit Metadata
+                for stress in [1.0, 1.5]:
+                    update_status(gate, seed, win_id, stage=f"eval_stress_{stress}")
+                    m = run_evaluation_report(model_path, stats_path, test_df, cost_multiplier=stress)
+                    m.update({
+                        'commit_hash': commit,
+                        'dataset_version': dataset_version,
+                        'config_hash': config_hash,
+                        'seed': seed,
+                        'window_id': win_id,
+                        'gate': gate
+                    })
+                    results.append(m)
+                    
+                # Incremental save
+                pd.DataFrame(results).to_csv("evaluation/industrial_results.csv", index=False)
 
-    # Gate Passage Check
-    pdf = pd.DataFrame(results)
-    avg_trades = pdf[pdf['cost_stress'] == 1.0]['trade_count'].mean()
-    avg_pf = pdf[pdf['cost_stress'] == 1.0]['profit_factor'].mean()
-    
-    print(f"\n--- GATE {gate} FINAL REPORT ---")
-    print(f"Avg Trades: {avg_trades:.2f}")
-    print(f"Avg PF: {avg_pf:.2f}")
-    
-    # Save summary
-    summary = {
-        'gate': gate,
-        'avg_trades': avg_trades,
-        'avg_pf': avg_pf,
-        'passed': False,
-        'commit': commit
-    }
-    
-    if gate == 1 and avg_trades > cfg['thresholds']['trades']:
-        summary['passed'] = True
-    elif gate == 2 and avg_pf >= cfg['thresholds']['pf']:
-        summary['passed'] = True
+        # Gate Passage Check
+        pdf = pd.DataFrame(results)
+        avg_trades = pdf[pdf['cost_stress'] == 1.0]['trade_count'].mean()
+        avg_pf = pdf[pdf['cost_stress'] == 1.0]['profit_factor'].mean()
+        avg_expectancy = pdf[pdf['cost_stress'] == 1.0]['expectancy'].mean()
         
-    with open("evaluation/summary.json", "w") as f:
-        json.dump(summary, f, indent=4)
+        print(f"\n--- GATE {gate} FINAL REPORT ---")
+        print(f"Avg Trades: {avg_trades:.2f} | Avg PF: {avg_pf:.2f} | Avg Expectancy: {avg_expectancy:.4f}R")
         
-    if summary['passed']:
-        print(f"GATE {gate} PASSED.")
-    else:
-        print(f"GATE {gate} FAILED.")
+        summary = {
+            'gate': gate,
+            'avg_trades': avg_trades,
+            'avg_pf': avg_pf,
+            'avg_expectancy': avg_expectancy,
+            'passed': False,
+            'commit': commit,
+            'timestamp': pd.Timestamp.now().isoformat()
+        }
+        
+        if gate == 1:
+            if avg_trades > cfg['thresholds']['trades'] and avg_expectancy > cfg['thresholds']['expectancy']:
+                summary['passed'] = True
+        elif gate == 2:
+            if avg_pf >= cfg['thresholds']['pf'] and avg_expectancy >= cfg['thresholds']['expectancy']:
+                summary['passed'] = True
+                
+        with open("evaluation/summary.json", "w") as f:
+            json.dump(summary, f, indent=4)
+            
+        if summary['passed']:
+            print(f"CONGRATULATIONS: GATE {gate} PASSED.")
+            with open("logs/done.flag", "w") as f: f.write(f"Gate {gate} Success")
+        else:
+            print(f"CRITICAL: GATE {gate} FAILED KPIs.")
+            with open("logs/error.flag", "w") as f: f.write(f"Gate {gate} KPI Failure")
+
+    except Exception as e:
+        print(f"CRITICAL ERROR in pipeline: {e}")
+        with open("logs/error.flag", "w") as f: f.write(str(e))
+        raise e
 
 if __name__ == "__main__":
     import argparse
