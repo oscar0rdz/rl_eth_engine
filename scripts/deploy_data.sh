@@ -3,11 +3,14 @@
 # Automates the transfer of raw data from local to remote VM.
 set -e
 
-# Configuration (Using example values provided by user)
-REMOTE_HOST=${REMOTE_HOST:-"34.67.120.15"}
-REMOTE_USER=${REMOTE_USER:-"ubuntu"}
-LOCAL_DATA_DIR="/Users/oscarr/Desarrollo/Python0/PPO:LSTM + Gymnasium/rl_eth_engine/data/raw/"
-REMOTE_DATA_DIR=${REMOTE_DATA_DIR:-"/home/ubuntu/rl_eth_engine/data/raw/"}
+# Load Configuration
+CONFIG_FILE="$(dirname "$0")/deploy_config.sh"
+if [[ -f "$CONFIG_FILE" ]]; then
+    source "$CONFIG_FILE"
+else
+    echo "Configuration file $CONFIG_FILE not found."
+    exit 1
+fi
 
 echo "Deploying data from $LOCAL_DATA_DIR to ${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_DATA_DIR}..."
 

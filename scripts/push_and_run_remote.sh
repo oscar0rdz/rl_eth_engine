@@ -18,10 +18,14 @@ git commit -m "[auto] push changes"
 git push origin main
 
 # ---- Remote execution ----
-# SSH details (Using example values provided by user)
-REMOTE_HOST=${REMOTE_HOST:-"34.67.120.15"}
-REMOTE_USER=${REMOTE_USER:-"ubuntu"}
-REMOTE_PATH=${REMOTE_PATH:-"/home/ubuntu/rl_eth_engine"}
+# Load Configuration
+CONFIG_FILE="$(dirname "$0")/deploy_config.sh"
+if [[ -f "$CONFIG_FILE" ]]; then
+    source "$CONFIG_FILE"
+else
+    echo "Configuration file $CONFIG_FILE not found. Please create it or set REMOTE_HOST/REMOTE_USER."
+    exit 1
+fi
 
 ssh ${REMOTE_USER}@${REMOTE_HOST} <<'EOF'
   cd ${REMOTE_PATH}
