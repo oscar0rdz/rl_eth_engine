@@ -1,8 +1,9 @@
 {
-  "name": "eth_dataset",
-  "date_range": "2020-01-01/2023-12-31",
+  "name": "eth_dataset_v3",
   "symbol": "ETHUSDT",
-  "timeframe": "1h",
-  "file_hash": "<SHA256_PLACEHOLDER>",
+  "timeframe_5m": "data/raw/ETHUSDT_5m_2020_01_01_2026_01_01.parquet",
+  "timeframe_15m": "data/raw/ETHUSDT_15m_2020_01_01_2026_01_01.parquet",
+  "timeframe_1h": "data/raw/ETHUSDT_1h_2020_01_01_2026_01_01.parquet",
+  "date_range": "2020-01-01 to 2026-01-01",
   "last_updated": "2026-04-26"
 }

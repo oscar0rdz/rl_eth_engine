@@ -4,11 +4,11 @@ from binance.client import Client
 from datetime import datetime
 
 class DataCollector:
-    def __init__(self, raw_dir='rl_eth_engine/data/raw'):
-        # Load keys from .env if possible
+    def __init__(self, raw_dir='data/raw'):
+        # Try to find .env in project root
         api_key = None
         api_secret = None
-        env_path = "/Users/oscarr/Desarrollo/Python0/PPO:LSTM + Gymnasium/.env"
+        env_path = ".env"
         if os.path.exists(env_path):
             with open(env_path, 'r') as f:
                 lines = f.readlines()
@@ -24,12 +24,25 @@ class DataCollector:
 
 
     def download_and_save(self, symbol, interval, start_str, end_str=None):
-        filename = f"{symbol}_{interval}_{start_str.replace(' ', '_')}.csv"
-        filepath = os.path.join(self.raw_dir, filename)
+        # Support both CSV and Parquet extensions for loading
+        csv_filename = f"{symbol}_{interval}_{start_str.replace(' ', '_')}.csv"
+        parquet_filename = f"{symbol}_{interval}_2020_01_01_2026_01_01.parquet" # Match download script
         
-        if os.path.exists(filepath):
-            print(f"File {filename} already exists. Loading...")
-            return pd.read_csv(filepath, index_col=0, parse_dates=True)
+        csv_path = os.path.join(self.raw_dir, csv_filename)
+        parquet_path = os.path.join(self.raw_dir, parquet_filename)
+        
+        if os.path.exists(parquet_path):
+            print(f"File {parquet_filename} already exists. Loading Parquet...")
+            df = pd.read_parquet(parquet_path)
+            # Ensure it has a datetime index if requested
+            if 'open_time' in df.columns:
+                df['timestamp'] = pd.to_datetime(df['open_time'])
+                df.set_index('timestamp', inplace=True)
+            return df
+
+        if os.path.exists(csv_path):
+            print(f"File {csv_filename} already exists. Loading CSV...")
+            return pd.read_csv(csv_path, index_col=0, parse_dates=True)
 
         print(f"Downloading {symbol} {interval} from {start_str}...")
         klines = self.client.get_historical_klines(symbol, interval, start_str, end_str)
@@ -45,8 +58,8 @@ class DataCollector:
         numeric_cols = ['open', 'high', 'low', 'close', 'volume']
         df[numeric_cols] = df[numeric_cols].apply(pd.to_numeric)
         
-        df[numeric_cols].to_csv(filepath)
-        print(f"Saved to {filepath}")
+        df[numeric_cols].to_csv(csv_path)
+        print(f"Saved to {csv_path}")
         return df[numeric_cols]
 
 if __name__ == "__main__":

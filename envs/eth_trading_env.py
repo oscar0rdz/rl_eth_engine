@@ -1,3 +1,4 @@
+import os
 import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
@@ -12,10 +13,16 @@ class ETHTradingEnvV4(gym.Env):
     Actions Phase A: 0=SKIP, 1=ENTER_SMALL, 2=ENTER_FULL
     Actions Phase B: 0=SKIP, 1=ENTER_S, 2=ENTER_F, 3=HOLD, 4=REDUCE_50, 5=CLOSE
     """
-    def __init__(self, df, training_phase=1, config_path='rl_eth_engine/configs/reward_config.yaml'):
+    def __init__(self, df, training_phase=1, config_path=None):
         super().__init__()
         self.df = df
         self.training_phase = training_phase # 1: Phase A (Entry), 2: Phase B (Mgmt)
+        
+        if config_path is None:
+            # Dynamic path resolution to find configs inside the project root
+            base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+            config_path = os.path.join(base_dir, 'configs', 'reward_config.yaml')
+            
         self.config = self._load_config(config_path)
         
         # Action space always 6, but sanitized in step()

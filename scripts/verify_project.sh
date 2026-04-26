@@ -15,6 +15,14 @@ if [ "$SKIP_GIT" = false ]; then
       exit 1
     fi
 
+    # Rule 4: Zero Tolerance for Dirty Repos
+    if [[ -n $(git status --porcelain) ]]; then
+      echo "ERROR: Local changes detected. GitHub must be the source of truth."
+      echo "Commit and push your changes, or run git reset --hard origin/main"
+      git status --short
+      exit 1
+    fi
+
     REMOTE=$(git config --get remote.origin.url || true)
     if [[ -z "$REMOTE" ]]; then
       echo "No remote origin configured"
@@ -48,7 +56,8 @@ fi
 
 # Example required data files
 PROCESSED_DATA="data/processed/features.parquet"
-REQUIRED_DATA=("data/raw/trades.parquet" "$PROCESSED_DATA")
+# Check for at least one raw data file and the manifest
+REQUIRED_DATA=("data/raw/ETHUSDT_5m_2020_01_01_2026_01_01.parquet")
 for f in "${REQUIRED_DATA[@]}"; do
   if [[ ! -f "$f" ]]; then
     echo "Missing required data file: $f"

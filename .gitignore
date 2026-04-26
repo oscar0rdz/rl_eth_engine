@@ -1,0 +1,31 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Data and models (Excluding large files per institutional rules)
+data/raw/
+data/processed/
+models/*.zip
+models/*.pkl
+checkpoints/
+tensorboard_logs/
+
+# Results and reports
+evaluation/industrial_results.csv
+evaluation/v4_gate1_results.csv
+evaluation/summary.json
+evaluation/run_metadata.json
+
+# Local envs
+.env
+reproducibility.txt
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
