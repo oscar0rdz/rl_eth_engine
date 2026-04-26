@@ -1,0 +1,20 @@
+reward:
+  realized_pnl_weight: 1.0
+  unrealized_delta_weight: 0.15 # Reduced from 0.20 to be more conservative
+  fee_weight: 1.0
+  slippage_weight: 1.0
+  drawdown_weight: 1.25
+  turnover_penalty: 0.03
+  invalid_action_penalty: 0.01
+  stale_bad_position_penalty: 0.02
+  overtrade_penalty: 0.005 # Added new small overtrade penalty
+
+# Environment Configuration
+env_params:
+  initial_capital: 1000.0
+  max_leverage: 1.0
+  trading_fee: 0.001 
+  slippage: 0.0005   
+  spread: 0.0002     
+  max_spread: 0.001
+  max_atr_percentile: 0.98

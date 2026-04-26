@@ -1,0 +1,5 @@
+# Evaluation configuration
+metrics:
+  - trade_count
+  - expectancy
+  - profit_factor

@@ -1,0 +1,27 @@
+features:
+  - return_5m
+  - return_15m
+  - return_1h
+  - volatility_5m
+  - volatility_1h
+  - volume_zscore
+  - vwap_distance
+  - ema_slope_fast
+  - ema_slope_slow
+  - adx_proxy
+  - rsi
+  - range_position
+  - spread_proxy
+  - hour_of_day
+  - day_of_week
+  - current_position
+  - unrealized_pnl
+  - drawdown
+  - time_in_position
+
+timeframes:
+  - 5m
+  - 15m
+  - 1h
+
+symbol: ETHUSDT

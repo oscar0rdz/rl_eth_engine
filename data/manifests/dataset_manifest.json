@@ -1,0 +1,8 @@
+{
+  "name": "eth_dataset",
+  "date_range": "2020-01-01/2023-12-31",
+  "symbol": "ETHUSDT",
+  "timeframe": "1h",
+  "file_hash": "<SHA256_PLACEHOLDER>",
+  "last_updated": "2026-04-26"
+}
