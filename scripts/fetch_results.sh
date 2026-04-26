@@ -4,8 +4,8 @@
 set -e
 
 # Remote details (set via env vars)
-REMOTE_HOST=${REMOTE_HOST:-"your_vm_host"}
-REMOTE_USER=${REMOTE_USER:-"your_user"}
+REMOTE_HOST=${REMOTE_HOST:-"TU_HOST"}
+REMOTE_USER=${REMOTE_USER:-"TU_USER"}
 REMOTE_PATH=${REMOTE_PATH:-"~/rl_eth_engine"}
 LOCAL_RESULTS_DIR="$(pwd)/results"
 
